@@ -25,16 +25,22 @@ import org.glassfish.gmbal.Description;
 import org.glassfish.gmbal.GmbalMBean;
 import org.glassfish.gmbal.ManagedObject;
 
+import java.util.Collection;
+import java.util.HashSet;
+
 /**
  * JMX managed object for object pool implementations.
  */
 @ManagedObject
 @Description("Basic object pool with a pool of objects (generally related to network connections) for each key.")
-public class BaseObjectPool extends JmxObject {
+public class BaseObjectPool<K, V> extends JmxObject {
 
-    private final org.glassfish.grizzly.memcached.pool.BaseObjectPool pool;
+    private final org.glassfish.grizzly.memcached.pool.BaseObjectPool<K, V> pool;
 
-    public BaseObjectPool(final org.glassfish.grizzly.memcached.pool.BaseObjectPool pool) {
+    private GrizzlyJmxManager mom;
+    private final Collection<Object> keyedObjectJmx = new HashSet<>();
+
+    public BaseObjectPool(final org.glassfish.grizzly.memcached.pool.BaseObjectPool<K, V> pool) {
         this.pool = pool;
     }
 
@@ -45,10 +51,13 @@ public class BaseObjectPool extends JmxObject {
 
     @Override
     protected void onRegister(GrizzlyJmxManager mom, GmbalMBean bean) {
+        this.mom = mom;
+        rebuildSubTree();
     }
 
     @Override
     protected void onDeregister(GrizzlyJmxManager mom) {
+        this.mom = null;
     }
 
     /**
@@ -159,6 +168,18 @@ public class BaseObjectPool extends JmxObject {
     @ManagedAttribute(id = "object-pool-keys")
     public String getKeys() {
         return pool.getKeys();
+    }
+
+    private void rebuildSubTree() {
+        keyedObjectJmx.forEach(jmxObj -> mom.deregister(jmxObj));
+        keyedObjectJmx.clear();
+
+        final Collection<org.glassfish.grizzly.memcached.pool.BaseObjectPool.QueuePool<V>> keyedObjects = pool.getValues();
+        keyedObjects.forEach(keyedObj -> {
+            final Object jmxObj = keyedObj.getMonitoringConfig().createManagementObject();
+            mom.register(this, jmxObj);
+            keyedObjectJmx.add(jmxObj);
+        });
     }
 
     @ManagedData(name = "Object Pool Stat")

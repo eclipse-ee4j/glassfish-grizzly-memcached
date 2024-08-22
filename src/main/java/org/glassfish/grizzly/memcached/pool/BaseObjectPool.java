@@ -18,9 +18,11 @@ package org.glassfish.grizzly.memcached.pool;
 
 import org.glassfish.grizzly.Grizzly;
 import org.glassfish.grizzly.monitoring.DefaultMonitoringConfig;
+import org.glassfish.grizzly.monitoring.MonitoringAware;
 import org.glassfish.grizzly.monitoring.MonitoringConfig;
 import org.glassfish.grizzly.monitoring.MonitoringUtils;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.concurrent.BlockingQueue;
@@ -110,7 +112,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         }
         QueuePool<V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            final QueuePool<V> newPool = new QueuePool<V>(max);
+            final QueuePool<V> newPool = new QueuePool<V>(key.toString(), max);
             final QueuePool<V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
             pool = oldPool == null ? newPool : oldPool;
         }
@@ -189,7 +191,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         }
         QueuePool<V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            final QueuePool<V> newPool = new QueuePool<V>(max);
+            final QueuePool<V> newPool = new QueuePool<V>(key.toString(), max);
             final QueuePool<V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
             pool = oldPool == null ? newPool : oldPool;
         }
@@ -610,6 +612,11 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         return keyedObjectPool.keySet().toString();
     }
 
+    public Collection<QueuePool<V>> getValues() {
+        return keyedObjectPool.values();
+    }
+
+
     /**
      * {@inheritDoc}
      */
@@ -633,35 +640,60 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
      * If this pool has max size(bounded pool), it uses {@link LinkedBlockingQueue}.
      * Otherwise, this pool uses unbounded queue like {@link LinkedBlockingQueue} for idle objects.
      */
-    private static class QueuePool<V> {
+    public static class QueuePool<V> implements MonitoringAware<ObjectPoolProbe> {
         private final AtomicInteger poolSizeHint = new AtomicInteger();
         private volatile int peakSizeHint = 0;
         private final BlockingQueue<V> queue;
         private final AtomicBoolean destroyed = new AtomicBoolean();
+        private final String name;
 
-        private QueuePool(final int max) {
+        private final DefaultMonitoringConfig<ObjectPoolProbe> queuePoolMonitoringConfig =
+                new DefaultMonitoringConfig<ObjectPoolProbe>(ObjectPoolProbe.class) {
+
+                    @Override
+                    public Object createManagementObject() {
+                        return createJmxManagementObject();
+                    }
+                };
+
+        private QueuePool(final String name, final int max) {
             if (max <= 0 || max == Integer.MAX_VALUE) {
                 queue = new LinkedTransferQueue<>();
 
             } else {
                 queue = new LinkedBlockingQueue<V>(max);
             }
+            this.name = name;
         }
 
-        private int getPoolSize() {
+        public int getPoolSize() {
             return poolSizeHint.get();
         }
 
-        private int getPeakCount() {
+        public int getPeakCount() {
             return peakSizeHint;
         }
 
-        private int getActiveCount() {
+        public int getActiveCount() {
             return poolSizeHint.get() - queue.size();
         }
 
-        private int getIdleCount() {
+        public int getIdleCount() {
             return queue.size();
+        }
+
+        @Override
+        public MonitoringConfig<ObjectPoolProbe> getMonitoringConfig() {
+            return queuePoolMonitoringConfig;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        private Object createJmxManagementObject() {
+            return MonitoringUtils
+                    .loadJmxObject("org.glassfish.grizzly.memcached.pool.jmx.KeyedObject", this, QueuePool.class);
         }
     }
 
