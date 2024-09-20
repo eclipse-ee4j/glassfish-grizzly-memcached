@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0, which is available at
@@ -27,7 +27,6 @@ import org.glassfish.grizzly.memcached.pool.ObjectPool;
 import org.glassfish.grizzly.memory.Buffers;
 import org.glassfish.grizzly.memory.CompositeBuffer;
 import org.glassfish.grizzly.memory.MemoryManager;
-import org.glassfish.grizzly.utils.NullaryFunction;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -36,6 +35,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -79,16 +79,18 @@ public class MemcachedClientFilter extends BaseFilter {
     private final Attribute<ParsingStatus> statusAttribute = Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute("MemcachedClientFilter.Status");
     private final Attribute<MemcachedResponse> responseAttribute =
             Grizzly.DEFAULT_ATTRIBUTE_BUILDER.createAttribute("MemcachedClientFilter.Response",
-                    new NullaryFunction<MemcachedResponse>() {
-                        public MemcachedResponse evaluate() {
-                            return MemcachedResponse.create();
-                        }
-                    });
+                                                              new Supplier<MemcachedResponse>() {
+                                                                  @Override
+                                                                  public MemcachedResponse get() {
+                                                                      return MemcachedResponse.create();
+                                                                  }
+                                                              });
 
     private final Attribute<BlockingQueue<MemcachedRequest>> requestQueueAttribute =
-            Grizzly.DEFAULT_ATTRIBUTE_BUILDER.<BlockingQueue<MemcachedRequest>>createAttribute("MemcachedClientFilter.RequestQueue",
-                    new NullaryFunction<BlockingQueue<MemcachedRequest>>() {
-                        public BlockingQueue<MemcachedRequest> evaluate() {
+            Grizzly.DEFAULT_ATTRIBUTE_BUILDER.<BlockingQueue<MemcachedRequest>>createAttribute(
+                    "MemcachedClientFilter.RequestQueue", new Supplier<BlockingQueue<MemcachedRequest>>() {
+                        @Override
+                        public BlockingQueue<MemcachedRequest> get() {
                             return new LinkedTransferQueue<>();
                         }
                     });
