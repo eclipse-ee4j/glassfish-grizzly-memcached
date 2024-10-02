@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0, which is available at
@@ -66,7 +66,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
     private final boolean disposable;
     private final long keepAliveTimeoutInSecs;
 
-    private final ConcurrentMap<K, QueuePool<V>> keyedObjectPool = new ConcurrentHashMap<>();
+    private final ConcurrentMap<K, QueuePool<K, V>> keyedObjectPool = new ConcurrentHashMap<>();
     private final ConcurrentMap<V, K> managedActiveObjects = new ConcurrentHashMap<>();
     private final AtomicBoolean destroyed = new AtomicBoolean();
     private final ScheduledExecutorService scheduledExecutor;
@@ -110,10 +110,10 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             throw new IllegalArgumentException("key must not be null");
         }
-        QueuePool<V> pool = keyedObjectPool.get(key);
+        QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            final QueuePool<V> newPool = new QueuePool<V>(key.toString(), max);
-            final QueuePool<V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
+            final QueuePool<K, V> newPool = new QueuePool<K, V>(this, key, max);
+            final QueuePool<K, V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
             pool = oldPool == null ? newPool : oldPool;
         }
         if (pool.destroyed.get()) {
@@ -146,7 +146,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             throw new IllegalArgumentException("key must not be null");
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
             return;
         }
@@ -167,7 +167,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             throw new IllegalArgumentException("key must not be null");
         }
-        final QueuePool<V> pool = keyedObjectPool.remove(key);
+        final QueuePool<K, V> pool = keyedObjectPool.remove(key);
         if (pool == null) {
             return;
         }
@@ -189,10 +189,10 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             throw new IllegalArgumentException("key must not be null");
         }
-        QueuePool<V> pool = keyedObjectPool.get(key);
+        QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            final QueuePool<V> newPool = new QueuePool<V>(key.toString(), max);
-            final QueuePool<V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
+            final QueuePool<K, V> newPool = new QueuePool<K, V>(this, key, max);
+            final QueuePool<K, V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
             pool = oldPool == null ? newPool : oldPool;
         }
         if (pool.destroyed.get()) {
@@ -270,7 +270,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         return result;
     }
 
-    private V createIfUnderSpecificSize(final int specificSize, final QueuePool<V> pool, final K key,
+    private V createIfUnderSpecificSize(final int specificSize, final QueuePool<K, V> pool, final K key,
                                         final boolean validation) throws NoValidObjectException, TimeoutException {
         if (destroyed.get()) {
             throw new IllegalStateException("pool has already destroyed");
@@ -337,7 +337,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
             return;
         }
         final K managed = managedActiveObjects.remove(value);
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null || managed == null) {
             try {
                 factory.destroyObject(key, value);
@@ -385,7 +385,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
             return;
         }
         final K managed = managedActiveObjects.remove(value);
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
             if (logger.isLoggable(Level.FINEST)) {
                 logger.log(Level.FINEST, "the pool was not found. managed={0}, key={1}, value={2}", new Object[]{managed, key, value});
@@ -426,9 +426,9 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
             scheduledExecutor.shutdown();
         }
 
-        for (Map.Entry<K, QueuePool<V>> entry : keyedObjectPool.entrySet()) {
+        for (Map.Entry<K, QueuePool<K, V>> entry : keyedObjectPool.entrySet()) {
             final K key = entry.getKey();
-            final QueuePool<V> pool = entry.getValue();
+            final QueuePool<K, V> pool = entry.getValue();
             pool.destroyed.compareAndSet(false, true);
             clearPool(pool, key);
         }
@@ -444,7 +444,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         managedActiveObjects.clear();
     }
 
-    private void clearPool(final QueuePool<V> pool, final K key) {
+    private void clearPool(final QueuePool<K, V> pool, final K key) {
         if (pool == null || key == null) {
             return;
         }
@@ -458,6 +458,16 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         }
     }
 
+    public QueuePool<K, V> getPool(final K key) {
+        if (destroyed.get()) {
+            return null;
+        }
+        if (key == null) {
+            return null;
+        }
+        return keyedObjectPool.get(key);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -469,7 +479,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             return -1;
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
             return -1;
         }
@@ -487,7 +497,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             return -1;
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
             return -1;
         }
@@ -505,7 +515,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             return -1;
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
             return -1;
         }
@@ -523,7 +533,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             return -1;
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
             return -1;
         }
@@ -612,7 +622,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         return keyedObjectPool.keySet().toString();
     }
 
-    public Collection<QueuePool<V>> getValues() {
+    public Collection<QueuePool<K, V>> getValues() {
         return keyedObjectPool.values();
     }
 
@@ -640,11 +650,13 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
      * If this pool has max size(bounded pool), it uses {@link LinkedBlockingQueue}.
      * Otherwise, this pool uses unbounded queue like {@link LinkedBlockingQueue} for idle objects.
      */
-    public static class QueuePool<V> implements MonitoringAware<ObjectPoolProbe> {
+    public static class QueuePool<K, V> implements MonitoringAware<ObjectPoolProbe> {
         private final AtomicInteger poolSizeHint = new AtomicInteger();
         private volatile int peakSizeHint = 0;
         private final BlockingQueue<V> queue;
         private final AtomicBoolean destroyed = new AtomicBoolean();
+        private final BaseObjectPool<K, V> pool;
+        private final K key;
         private final String name;
 
         private final DefaultMonitoringConfig<ObjectPoolProbe> queuePoolMonitoringConfig =
@@ -656,14 +668,16 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
                     }
                 };
 
-        private QueuePool(final String name, final int max) {
+        private QueuePool(final BaseObjectPool<K, V> pool, final K key, final int max) {
+            this.pool = pool;
+            this.key = key;
+            this.name = key.toString();
             if (max <= 0 || max == Integer.MAX_VALUE) {
                 queue = new LinkedTransferQueue<>();
 
             } else {
                 queue = new LinkedBlockingQueue<V>(max);
             }
-            this.name = name;
         }
 
         public int getPoolSize() {
@@ -692,8 +706,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         }
 
         private Object createJmxManagementObject() {
-            return MonitoringUtils
-                    .loadJmxObject("org.glassfish.grizzly.memcached.pool.jmx.KeyedObject", this, QueuePool.class);
+            return new org.glassfish.grizzly.memcached.pool.jmx.KeyedObject<K, V>(pool, key);
         }
     }
 
@@ -711,9 +724,9 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
                 return;
             }
             try {
-                for (Map.Entry<K, QueuePool<V>> entry : keyedObjectPool.entrySet()) {
+                for (Map.Entry<K, QueuePool<K, V>> entry : keyedObjectPool.entrySet()) {
                     final K key = entry.getKey();
-                    final QueuePool<V> pool = entry.getValue();
+                    final QueuePool<K, V> pool = entry.getValue();
                     if (pool.destroyed.get()) {
                         continue;
                     }

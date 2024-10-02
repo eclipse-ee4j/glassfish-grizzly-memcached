@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0, which is available at
@@ -71,51 +71,6 @@ public class BaseObjectPool<K, V> extends JmxObject {
         return pool.getClass().getName();
     }
 
-    /**
-     * Returns the total number of instances for all keys
-     *
-     * @return the total number of instances for all keys managed by this object pool or a negative value if unsupported
-     */
-    @ManagedAttribute(id = "object-pool-total-pool-size")
-    @Description("The total number of instances for all keys managed by this object pool.")
-    public int getTotalPoolSize() {
-        return pool.getTotalPoolSize();
-    }
-
-    /**
-     * Returns the highest peak number of instances among all keys
-     *
-     * @return the highest peak number of instances among all keys managed by this object pool or a negative value if unsupported
-     */
-    @ManagedAttribute(id = "object-pool-highest-peak-count")
-    @Description("The highest peak number of instances among all keys managed by this object pool.")
-    public int getHighestPeakCount() {
-        return pool.getHighestPeakCount();
-    }
-
-    /**
-     * Returns the total number of instances currently borrowed from but not yet returned to the pool for all keys
-     *
-     * @return the total number of instances currently borrowed from but not yet returned to the pool for all keys or a negative value if unsupported
-     */
-    @ManagedAttribute(id = "object-pool-total-active-count")
-    @Description(
-            "The total number of instances currently borrowed from but not yet returned to the pool for all keys managed by this object pool.")
-    public int getTotalActiveCount() {
-        return pool.getTotalActiveCount();
-    }
-
-    /**
-     * Returns the total number of instances currently idle in this pool for all keys
-     *
-     * @return the total number of instances currently idle in this pool for all keys or a negative value if unsupported
-     */
-    @ManagedAttribute(id = "object-pool-total-idle-count")
-    @Description("The total number of instances currently idle for all keys managed by this object pool.")
-    public int getTotalIdleCount() {
-        return pool.getTotalIdleCount();
-    }
-
     @ManagedAttribute(id = "object-pool-stat")
     public CompositeObjectPoolStat getPoolStat() {
         return new CompositeObjectPoolStat(pool.getTotalPoolSize(), pool.getHighestPeakCount(),
@@ -174,7 +129,7 @@ public class BaseObjectPool<K, V> extends JmxObject {
         keyedObjectJmx.forEach(jmxObj -> mom.deregister(jmxObj));
         keyedObjectJmx.clear();
 
-        final Collection<org.glassfish.grizzly.memcached.pool.BaseObjectPool.QueuePool<V>> keyedObjects = pool.getValues();
+        final Collection<org.glassfish.grizzly.memcached.pool.BaseObjectPool.QueuePool<K, V>> keyedObjects = pool.getValues();
         keyedObjects.forEach(keyedObj -> {
             final Object jmxObj = keyedObj.getMonitoringConfig().createManagementObject();
             mom.register(this, jmxObj);
@@ -183,7 +138,7 @@ public class BaseObjectPool<K, V> extends JmxObject {
     }
 
     @ManagedData(name = "Object Pool Stat")
-    private static class CompositeObjectPoolStat {
+    public static class CompositeObjectPoolStat {
         @ManagedAttribute(id = "total-pools")
         @Description("The total number of instances for all keys managed by this object pool.")
         private final int totalPoolSize;

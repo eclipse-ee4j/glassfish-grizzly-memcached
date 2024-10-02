@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0, which is available at
@@ -233,6 +233,11 @@ public class FailoverTest {
         try {
             transport.shutdownNow();
         } catch (IOException ignore) {
+        }
+
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException ignore) {
         }
 
         // test failure
