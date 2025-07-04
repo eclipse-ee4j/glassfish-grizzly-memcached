@@ -251,7 +251,7 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
                         // or return GrizzlyMemcachedCache.this.validateConnectionWithVersionCommand(value);
                     }
                 });
-        connectionPoolBuilder.name(builder.cacheName + "-connectionPool");
+        connectionPoolBuilder.name(builder.cacheName);
         connectionPoolBuilder.min(builder.minConnectionPerServer);
         connectionPoolBuilder.max(builder.maxConnectionPerServer);
         connectionPoolBuilder.keepAliveTimeoutInSecs(builder.keepAliveTimeoutInSecs);
