@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025 Oracle and/or its affiliates and others. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0, which is available at
@@ -2094,38 +2094,6 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
                 }
             });
         }
-    }
-
-    private boolean sendNoReplySafely(final Connection<SocketAddress> connection, final MemcachedRequest request) {
-        if (connection == null) {
-            throw new IllegalArgumentException("connection must not be null");
-        }
-        if (request == null) {
-            throw new IllegalArgumentException("request must not be null");
-        }
-        if (request.isNoReply()) {
-            GrizzlyFuture future = connection.write(new MemcachedRequest[]{request});
-            try {
-                future.get(writeTimeoutInMillis, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException ie) {
-                if (logger.isLoggable(Level.SEVERE)) {
-                    logger.log(Level.SEVERE, "failed to check the connection. connection=" + connection, ie);
-                }
-                Thread.currentThread().interrupt();
-                return false;
-            } catch (ExecutionException ee) {
-                if (logger.isLoggable(Level.SEVERE)) {
-                    logger.log(Level.SEVERE, "failed to check the connection. connection=" + connection, ee);
-                }
-                return false;
-            } catch (TimeoutException te) {
-                if (logger.isLoggable(Level.SEVERE)) {
-                    logger.log(Level.SEVERE, "failed to check the connection. connection=" + connection, te);
-                }
-                return false;
-            }
-        }
-        return true;
     }
 
     private Object send(final SocketAddress address,
