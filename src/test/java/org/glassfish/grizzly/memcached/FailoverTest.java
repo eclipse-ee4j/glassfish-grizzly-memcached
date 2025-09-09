@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -231,8 +232,14 @@ public class FailoverTest {
         Assert.assertNotNull(userCache.version(MOCK_MEMCACHED_ADDRESS));
 
         try {
-            transport.stop();
+            transport.shutdownNow();
         } catch (IOException ignore) {
+        }
+
+        // It guarantees that the shutdown will be completed after waiting for the health check interval.
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException ignore) {
         }
 
         // test failure
