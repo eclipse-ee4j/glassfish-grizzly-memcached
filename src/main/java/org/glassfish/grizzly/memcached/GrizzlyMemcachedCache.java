@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2025 Oracle and/or its affiliates and others. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -27,6 +28,7 @@ import org.glassfish.grizzly.WriteResult;
 import org.glassfish.grizzly.attributes.Attribute;
 import org.glassfish.grizzly.attributes.AttributeHolder;
 import org.glassfish.grizzly.filterchain.FilterChain;
+import org.glassfish.grizzly.jmxbase.GrizzlyJmxManager;
 import org.glassfish.grizzly.memcached.pool.BaseObjectPool;
 import org.glassfish.grizzly.memcached.pool.NoValidObjectException;
 import org.glassfish.grizzly.memcached.pool.ObjectPool;
@@ -37,6 +39,9 @@ import org.glassfish.grizzly.memcached.zookeeper.CacheServerListBarrierListener;
 import org.glassfish.grizzly.memcached.zookeeper.PreferRemoteConfigBarrierListener;
 import org.glassfish.grizzly.memcached.zookeeper.ZKClient;
 import org.glassfish.grizzly.memcached.zookeeper.ZooKeeperSupportCache;
+import org.glassfish.grizzly.monitoring.DefaultMonitoringConfig;
+import org.glassfish.grizzly.monitoring.MonitoringConfig;
+import org.glassfish.grizzly.monitoring.MonitoringUtils;
 import org.glassfish.grizzly.nio.transport.TCPNIOConnectorHandler;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 
@@ -145,6 +150,18 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
 
     private MemcachedClientFilter clientFilter;
 
+    private final boolean jmxEnabled;
+    private GrizzlyJmxManager jmxManager;
+    private Object managementObject;
+    private final DefaultMonitoringConfig<MemcachedCacheProbe> grizzlyMemcachedCacheMonitoringConfig =
+            new DefaultMonitoringConfig<MemcachedCacheProbe>(MemcachedCacheProbe.class) {
+
+                @Override
+                public Object createManagementObject() {
+                    return createJmxManagementObject();
+                }
+            };
+
     private GrizzlyMemcachedCache(Builder<K, V> builder) {
         this.cacheName = builder.cacheName;
         this.transport = builder.transport;
@@ -232,6 +249,7 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
                         // or return GrizzlyMemcachedCache.this.validateConnectionWithVersionCommand(value);
                     }
                 });
+        connectionPoolBuilder.name(builder.cacheName);
         connectionPoolBuilder.min(builder.minConnectionPerServer);
         connectionPoolBuilder.max(builder.maxConnectionPerServer);
         connectionPoolBuilder.keepAliveTimeoutInSecs(builder.keepAliveTimeoutInSecs);
@@ -261,6 +279,8 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
             this.zkListener = new CacheServerListBarrierListener(this, servers);
         }
         this.zkClient = builder.zkClient;
+
+        this.jmxEnabled = builder.jmxEnabled;
     }
 
     /**
@@ -299,6 +319,9 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
                 addServer(address);
             }
         }
+        if (jmxEnabled) {
+            enableJMX();
+        }
     }
 
     /**
@@ -319,6 +342,9 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
         }
         if (zkClient != null) {
             zkClient.unregisterBarrier(cacheName);
+        }
+        if (jmxEnabled) {
+            disableJMX();
         }
     }
 
@@ -516,6 +542,14 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
     @Override
     public String getName() {
         return cacheName;
+    }
+
+    public TCPNIOTransport getTransport() {
+        return transport;
+    }
+
+    public ObjectPool<SocketAddress, Connection<SocketAddress>> getConnectionPool() {
+        return connectionPool;
     }
 
     @Override
@@ -2449,6 +2483,138 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
         return opaqueIndex.getAndIncrement() & 0x7fffffff;
     }
 
+    public long getConnectTimeoutInMillis() {
+        return connectTimeoutInMillis;
+    }
+
+    public long getWriteTimeoutInMillis() {
+        return writeTimeoutInMillis;
+    }
+
+    public long getResponseTimeoutInMillis() {
+        return responseTimeoutInMillis;
+    }
+
+    public long getHealthMonitorIntervalInSecs() {
+        return healthMonitorIntervalInSecs;
+    }
+
+    public boolean isFailover() {
+        return failover;
+    }
+
+    public boolean isPreferRemoteConfig() {
+        return preferRemoteConfig;
+    }
+
+    /**
+     * Returns the total number of connections
+     *
+     * @param server the server to query
+     * @return the total number of connections corresponding to the given {@code server} currently idle and active in this pool or a negative value if unsupported
+     */
+    public int getConnectionSize(final SocketAddress server) {
+        if (connectionPool == null) {
+            return -1;
+        }
+        return connectionPool.getPoolSize(server);
+    }
+
+    /**
+     * Returns the peak number of connections
+     *
+     * @param server the server to query
+     * @return the peak number of connections corresponding to the given {@code server} or a negative value if unsupported
+     */
+    public int getPeakCount(final SocketAddress server) {
+        if (connectionPool == null) {
+            return -1;
+        }
+        return connectionPool.getPeakCount(server);
+    }
+
+    /**
+     * Returns the number of connections currently borrowed from but not yet returned to the pool
+     *
+     * @param server the server to query
+     * @return the number of connections corresponding to the given {@code server} currently borrowed in this pool or a negative value if unsupported
+     */
+    public int getActiveCount(final SocketAddress server) {
+        if (connectionPool == null) {
+            return -1;
+        }
+        return connectionPool.getActiveCount(server);
+    }
+
+    /**
+     * Returns the number of connections currently idle in this pool
+     *
+     * @param server the server to query
+     * @return the number of connections corresponding to the given {@code server} currently idle in this pool or a negative value if unsupported
+     */
+    public int getIdleCount(final SocketAddress server) {
+        if (connectionPool == null) {
+            return -1;
+        }
+        return connectionPool.getIdleCount(server);
+    }
+
+    public boolean isJmxEnabled() {
+        return jmxEnabled;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MonitoringConfig<MemcachedCacheProbe> getMonitoringConfig() {
+        return grizzlyMemcachedCacheMonitoringConfig;
+    }
+
+    /**
+     * Create the grizzly memcached cache JMX management object.
+     *
+     * @return the grizzly memcached cache JMX management object.
+     */
+    private Object createJmxManagementObject() {
+        return MonitoringUtils.loadJmxObject("org.glassfish.grizzly.memcached.jmx.GrizzlyMemcachedCache", this,
+                                             GrizzlyMemcachedCache.class);
+    }
+
+    private void enableJMX() {
+        try {
+            final GrizzlyJmxManager grizzlyJmxManager = GrizzlyJmxManager.instance();
+            if (grizzlyJmxManager == null) {
+                return;
+            }
+            final Object localManagementObject = createJmxManagementObject();
+            if (localManagementObject == null) {
+                return;
+            }
+            grizzlyJmxManager.registerAtRoot(localManagementObject);
+            jmxManager = grizzlyJmxManager;
+            managementObject = localManagementObject;
+        } catch (Exception e) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.log(Level.WARNING, "failed to enable JMX. cache=" + this, e);
+            }
+        }
+    }
+
+    private void disableJMX() {
+        try {
+            if (jmxManager != null && managementObject != null) {
+                jmxManager.deregister(managementObject);
+            }
+            managementObject = null;
+            jmxManager = null;
+        } catch (Exception e) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.log(Level.WARNING, "failed to disable JMX. cache=" + this, e);
+            }
+        }
+    }
+
     private class HealthMonitorTask implements Runnable {
 
         private final Map<SocketAddress, Boolean> failures = new ConcurrentHashMap<>();
@@ -2586,6 +2752,8 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
         private boolean returnValidation = false;
 
         private final ZKClient zkClient;
+
+        private boolean jmxEnabled = false;
 
         public Builder(final String cacheName, final GrizzlyMemcachedCacheManager manager, final TCPNIOTransport transport) {
             this.cacheName = cacheName;
@@ -2785,6 +2953,11 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
             this.preferRemoteConfig = preferRemoteConfig;
             return this;
         }
+
+        public Builder<K, V> jmxEnabled(final boolean jmxEnabled) {
+            this.jmxEnabled = jmxEnabled;
+            return this;
+        }
     }
 
     @Override
@@ -2801,7 +2974,9 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
         sb.append(", failover=").append(failover);
         sb.append(", preferRemoteConfig=").append(preferRemoteConfig);
         sb.append(", zkListener=").append(zkListener);
+        sb.append(", zooKeeperSupported=").append(isZooKeeperSupported());
         sb.append(", zooKeeperServerListPath='").append(zooKeeperServerListPath).append('\'');
+        sb.append(", jmxEnabled=").append(jmxEnabled);
         sb.append('}');
         return sb.toString();
     }

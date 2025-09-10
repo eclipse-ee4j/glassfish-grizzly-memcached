@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -17,8 +18,14 @@
 package org.glassfish.grizzly.memcached.pool;
 
 import org.glassfish.grizzly.Grizzly;
+import org.glassfish.grizzly.monitoring.DefaultMonitoringConfig;
+import org.glassfish.grizzly.monitoring.MonitoringAware;
+import org.glassfish.grizzly.monitoring.MonitoringConfig;
+import org.glassfish.grizzly.monitoring.MonitoringUtils;
 
+import java.util.Collection;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -52,6 +59,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
     private static final int MAX_VALIDATION_RETRY_COUNT = 3;
 
     private final PoolableObjectFactory<K, V> factory;
+    private final String name;
     private final int min;
     private final int max;
     private final boolean borrowValidation;
@@ -59,14 +67,24 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
     private final boolean disposable;
     private final long keepAliveTimeoutInSecs;
 
-    private final ConcurrentMap<K, QueuePool<V>> keyedObjectPool = new ConcurrentHashMap<>();
+    private final ConcurrentMap<K, QueuePool<K, V>> keyedObjectPool = new ConcurrentHashMap<>();
     private final ConcurrentMap<V, K> managedActiveObjects = new ConcurrentHashMap<>();
     private final AtomicBoolean destroyed = new AtomicBoolean();
     private final ScheduledExecutorService scheduledExecutor;
     private final ScheduledFuture<?> scheduledFuture;
 
+    private final DefaultMonitoringConfig<ObjectPoolProbe> baseObjectPoolMonitoringConfig =
+            new DefaultMonitoringConfig<ObjectPoolProbe>(ObjectPoolProbe.class) {
+
+                @Override
+                public Object createManagementObject() {
+                    return createJmxManagementObject();
+                }
+            };
+
     private BaseObjectPool(Builder<K, V> builder) {
         this.factory = builder.factory;
+        this.name = builder.name;
         this.min = builder.min;
         this.max = builder.max;
         this.borrowValidation = builder.borrowValidation;
@@ -93,10 +111,10 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             throw new IllegalArgumentException("key must not be null");
         }
-        QueuePool<V> pool = keyedObjectPool.get(key);
+        QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            final QueuePool<V> newPool = new QueuePool<V>(max);
-            final QueuePool<V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
+            final QueuePool<K, V> newPool = new QueuePool<K, V>(this, key, max);
+            final QueuePool<K, V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
             pool = oldPool == null ? newPool : oldPool;
         }
         if (pool.destroyed.get()) {
@@ -129,7 +147,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             throw new IllegalArgumentException("key must not be null");
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
             return;
         }
@@ -150,7 +168,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             throw new IllegalArgumentException("key must not be null");
         }
-        final QueuePool<V> pool = keyedObjectPool.remove(key);
+        final QueuePool<K, V> pool = keyedObjectPool.remove(key);
         if (pool == null) {
             return;
         }
@@ -172,10 +190,10 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             throw new IllegalArgumentException("key must not be null");
         }
-        QueuePool<V> pool = keyedObjectPool.get(key);
+        QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            final QueuePool<V> newPool = new QueuePool<V>(max);
-            final QueuePool<V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
+            final QueuePool<K, V> newPool = new QueuePool<K, V>(this, key, max);
+            final QueuePool<K, V> oldPool = keyedObjectPool.putIfAbsent(key, newPool);
             pool = oldPool == null ? newPool : oldPool;
         }
         if (pool.destroyed.get()) {
@@ -253,7 +271,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         return result;
     }
 
-    private V createIfUnderSpecificSize(final int specificSize, final QueuePool<V> pool, final K key,
+    private V createIfUnderSpecificSize(final int specificSize, final QueuePool<K, V> pool, final K key,
                                         final boolean validation) throws NoValidObjectException, TimeoutException {
         if (destroyed.get()) {
             throw new IllegalStateException("pool has already destroyed");
@@ -320,7 +338,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
             return;
         }
         final K managed = managedActiveObjects.remove(value);
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null || managed == null) {
             try {
                 factory.destroyObject(key, value);
@@ -368,7 +386,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
             return;
         }
         final K managed = managedActiveObjects.remove(value);
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
             if (logger.isLoggable(Level.FINEST)) {
                 logger.log(Level.FINEST, "the pool was not found. managed={0}, key={1}, value={2}", new Object[]{managed, key, value});
@@ -409,9 +427,9 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
             scheduledExecutor.shutdown();
         }
 
-        for (Map.Entry<K, QueuePool<V>> entry : keyedObjectPool.entrySet()) {
+        for (Map.Entry<K, QueuePool<K, V>> entry : keyedObjectPool.entrySet()) {
             final K key = entry.getKey();
-            final QueuePool<V> pool = entry.getValue();
+            final QueuePool<K, V> pool = entry.getValue();
             pool.destroyed.compareAndSet(false, true);
             clearPool(pool, key);
         }
@@ -427,7 +445,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         managedActiveObjects.clear();
     }
 
-    private void clearPool(final QueuePool<V> pool, final K key) {
+    private void clearPool(final QueuePool<K, V> pool, final K key) {
         if (pool == null || key == null) {
             return;
         }
@@ -441,6 +459,16 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         }
     }
 
+    public QueuePool<K, V> getPool(final K key) {
+        if (destroyed.get()) {
+            return null;
+        }
+        if (key == null) {
+            return null;
+        }
+        return keyedObjectPool.get(key);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -452,11 +480,11 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             return -1;
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            return 0;
+            return -1;
         }
-        return pool.poolSizeHint.get();
+        return pool.getPoolSize();
     }
 
     /**
@@ -470,11 +498,11 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             return -1;
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            return 0;
+            return -1;
         }
-        return pool.peakSizeHint;
+        return pool.getPeakCount();
     }
 
     /**
@@ -488,11 +516,11 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             return -1;
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            return 0;
+            return -1;
         }
-        return pool.poolSizeHint.get() - pool.queue.size();
+        return pool.getActiveCount();
     }
 
     /**
@@ -506,11 +534,61 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         if (key == null) {
             return -1;
         }
-        final QueuePool<V> pool = keyedObjectPool.get(key);
+        final QueuePool<K, V> pool = keyedObjectPool.get(key);
         if (pool == null) {
-            return 0;
+            return -1;
         }
-        return pool.queue.size();
+        return pool.getIdleCount();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getTotalPoolSize() {
+        if (destroyed.get()) {
+            return -1;
+        }
+        return keyedObjectPool.values().stream().mapToInt(QueuePool::getPoolSize).filter(i -> i > 0).sum();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getHighestPeakCount() {
+        if (destroyed.get()) {
+            return -1;
+        }
+        final OptionalInt maxCount =
+                keyedObjectPool.values().stream().mapToInt(QueuePool::getPeakCount).filter(i -> i > 0).max();
+        return maxCount.orElse(-1);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getTotalActiveCount() {
+        if (destroyed.get()) {
+            return -1;
+        }
+        return keyedObjectPool.values().stream().mapToInt(QueuePool::getActiveCount).filter(i -> i > 0).sum();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getTotalIdleCount() {
+        if (destroyed.get()) {
+            return -1;
+        }
+        return keyedObjectPool.values().stream().mapToInt(QueuePool::getIdleCount).filter(i -> i > 0).sum();
+    }
+
+    public String getName() {
+        return name;
     }
 
     public int getMin() {
@@ -537,24 +615,99 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         return keepAliveTimeoutInSecs;
     }
 
+    public boolean isDestroyed() {
+        return destroyed.get();
+    }
+
+    public String getKeys() {
+        return keyedObjectPool.keySet().toString();
+    }
+
+    public Collection<QueuePool<K, V>> getValues() {
+        return keyedObjectPool.values();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MonitoringConfig<ObjectPoolProbe> getMonitoringConfig() {
+        return baseObjectPoolMonitoringConfig;
+    }
+
+    /**
+     * Create the object pool JMX management object.
+     *
+     * @return the object pool JMX management object.
+     */
+    private Object createJmxManagementObject() {
+        return MonitoringUtils
+                .loadJmxObject("org.glassfish.grizzly.memcached.pool.jmx.BaseObjectPool", this, BaseObjectPool.class);
+    }
+
     /**
      * For storing idle objects, {@link BlockingQueue} will be used.
      * If this pool has max size(bounded pool), it uses {@link LinkedBlockingQueue}.
      * Otherwise, this pool uses unbounded queue like {@link LinkedBlockingQueue} for idle objects.
      */
-    private static class QueuePool<V> {
+    public static class QueuePool<K, V> implements MonitoringAware<ObjectPoolProbe> {
         private final AtomicInteger poolSizeHint = new AtomicInteger();
         private volatile int peakSizeHint = 0;
         private final BlockingQueue<V> queue;
         private final AtomicBoolean destroyed = new AtomicBoolean();
+        private final BaseObjectPool<K, V> pool;
+        private final K key;
+        private final String name;
 
-        private QueuePool(final int max) {
+        private final DefaultMonitoringConfig<ObjectPoolProbe> queuePoolMonitoringConfig =
+                new DefaultMonitoringConfig<ObjectPoolProbe>(ObjectPoolProbe.class) {
+
+                    @Override
+                    public Object createManagementObject() {
+                        return createJmxManagementObject();
+                    }
+                };
+
+        private QueuePool(final BaseObjectPool<K, V> pool, final K key, final int max) {
+            this.pool = pool;
+            this.key = key;
+            this.name = key.toString();
             if (max <= 0 || max == Integer.MAX_VALUE) {
                 queue = new LinkedTransferQueue<>();
 
             } else {
                 queue = new LinkedBlockingQueue<V>(max);
             }
+        }
+
+        public int getPoolSize() {
+            return poolSizeHint.get();
+        }
+
+        public int getPeakCount() {
+            return peakSizeHint;
+        }
+
+        public int getActiveCount() {
+            return poolSizeHint.get() - queue.size();
+        }
+
+        public int getIdleCount() {
+            return queue.size();
+        }
+
+        @Override
+        public MonitoringConfig<ObjectPoolProbe> getMonitoringConfig() {
+            return queuePoolMonitoringConfig;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        private Object createJmxManagementObject() {
+            return new org.glassfish.grizzly.memcached.pool.jmx.KeyedObject<K, V>(pool, key);
         }
     }
 
@@ -572,9 +725,9 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
                 return;
             }
             try {
-                for (Map.Entry<K, QueuePool<V>> entry : keyedObjectPool.entrySet()) {
+                for (Map.Entry<K, QueuePool<K, V>> entry : keyedObjectPool.entrySet()) {
                     final K key = entry.getKey();
-                    final QueuePool<V> pool = entry.getValue();
+                    final QueuePool<K, V> pool = entry.getValue();
                     if (pool.destroyed.get()) {
                         continue;
                     }
@@ -604,6 +757,7 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
         private static final boolean DEFAULT_DISPOSABLE = false;
         private static final long DEFAULT_KEEP_ALIVE_TIMEOUT_IN_SEC = 30 * 60; // 30min
         private final PoolableObjectFactory<K, V> factory;
+        private String name = "";
         private int min = DEFAULT_MIN;
         private int max = DEFAULT_MAX;
         private boolean borrowValidation = DEFAULT_BORROW_VALIDATION;
@@ -618,6 +772,13 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
          */
         public Builder(PoolableObjectFactory<K, V> factory) {
             this.factory = factory;
+        }
+
+        public Builder<K, V> name(final String name) {
+            if (name != null) {
+                this.name = name;
+            }
+            return this;
         }
 
         /**
@@ -723,7 +884,8 @@ public class BaseObjectPool<K, V> implements ObjectPool<K, V> {
     @Override
     public String toString() {
         return "BaseObjectPool{" +
-                "keepAliveTimeoutInSecs=" + keepAliveTimeoutInSecs +
+                "name=" + name +
+                ", keepAliveTimeoutInSecs=" + keepAliveTimeoutInSecs +
                 ", disposable=" + disposable +
                 ", borrowValidation=" + borrowValidation +
                 ", returnValidation=" + returnValidation +

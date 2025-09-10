@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -16,6 +17,8 @@
 
 package org.glassfish.grizzly.memcached;
 
+import org.glassfish.grizzly.monitoring.MonitoringAware;
+
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +35,7 @@ import java.util.Set;
  *
  * @author Bongjae Chang
  */
-public interface MemcachedCache<K, V> extends Commands<K, V>, Cache<K, V> {
+public interface MemcachedCache<K, V> extends Commands<K, V>, Cache<K, V>, MonitoringAware<MemcachedCacheProbe> {
     // extends basic memcached commands
 
     public boolean set(final K key, final V value, final int expirationInSecs, final boolean noReply, final long writeTimeoutInMillis, final long responseTimeoutInMillis);
