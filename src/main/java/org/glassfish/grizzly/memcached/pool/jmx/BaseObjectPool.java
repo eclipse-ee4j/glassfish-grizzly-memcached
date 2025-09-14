@@ -36,8 +36,6 @@ import java.util.HashSet;
 public class BaseObjectPool<K, V> extends JmxObject {
 
     private final org.glassfish.grizzly.memcached.pool.BaseObjectPool<K, V> pool;
-
-    private GrizzlyJmxManager mom;
     private final Collection<Object> keyedObjectJmx = new HashSet<>();
 
     public BaseObjectPool(final org.glassfish.grizzly.memcached.pool.BaseObjectPool<K, V> pool) {
@@ -51,13 +49,11 @@ public class BaseObjectPool<K, V> extends JmxObject {
 
     @Override
     protected void onRegister(GrizzlyJmxManager mom, GmbalMBean bean) {
-        this.mom = mom;
-        rebuildSubTree();
+        rebuildSubTree(mom);
     }
 
     @Override
     protected void onDeregister(GrizzlyJmxManager mom) {
-        this.mom = null;
     }
 
     @ManagedAttribute(id = "object-pool-type")
@@ -114,8 +110,8 @@ public class BaseObjectPool<K, V> extends JmxObject {
         return pool.getKeys();
     }
 
-    private void rebuildSubTree() {
-        keyedObjectJmx.forEach(jmxObj -> mom.deregister(jmxObj));
+    private void rebuildSubTree(final GrizzlyJmxManager mom) {
+        keyedObjectJmx.forEach(mom::deregister);
         keyedObjectJmx.clear();
 
         final Collection<org.glassfish.grizzly.memcached.pool.BaseObjectPool.QueuePool<K, V>> keyedObjects = pool.getValues();
