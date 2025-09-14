@@ -59,11 +59,6 @@ public class KeyedObject<K, V> extends JmxObject {
     protected void onDeregister(GrizzlyJmxManager mom) {
     }
 
-    /**
-     * Returns the Java type of the managed object pool
-     *
-     * @return the Java type of the managed object pool.
-     */
     @ManagedAttribute(id = "keyed-object-type")
     @Description("The Java type of the keyed object implementation being used.")
     public String getKeyedObjectType() {
@@ -86,7 +81,7 @@ public class KeyedObject<K, V> extends JmxObject {
     }
 
     @ManagedData(name="Object Stat")
-    public static class CompositeObjectStat {
+    private static class CompositeObjectStat {
         @ManagedAttribute(id = "objects")
         @Description("The total number of objects currently idle and active in this pool or a negative value if unsupported.")
         private final int objectSize;

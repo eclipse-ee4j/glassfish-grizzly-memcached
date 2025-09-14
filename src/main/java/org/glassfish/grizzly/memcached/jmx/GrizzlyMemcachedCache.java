@@ -69,11 +69,6 @@ public class GrizzlyMemcachedCache extends JmxObject {
         this.mom = null;
     }
 
-    /**
-     * Returns the Java type of the managed object pool
-     *
-     * @return the Java type of the managed object pool.
-     */
     @ManagedAttribute(id = "grizzly-memcached-cache-type")
     @Description("The Java type of the memcached cache implementation being used.")
     public String getCacheType() {
@@ -138,7 +133,7 @@ public class GrizzlyMemcachedCache extends JmxObject {
     @ManagedOperation(id = "grizzly-memcached-cache-connection-size", impact = Impact.INFO)
     @Description("The total number of connections currently idle and active in this pool or a negative value if unsupported.")
     @ParameterNames({"hostname", "port"})
-    public int getConnectionSize( final String hostname, final int port) {
+    public int getConnectionSize(final String hostname, final int port) {
         return cache.getConnectionSize(getAddress(hostname, port));
     }
 

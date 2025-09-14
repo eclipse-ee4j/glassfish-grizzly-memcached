@@ -60,11 +60,6 @@ public class BaseObjectPool<K, V> extends JmxObject {
         this.mom = null;
     }
 
-    /**
-     * Returns the Java type of the managed object pool
-     *
-     * @return the Java type of the managed object pool.
-     */
     @ManagedAttribute(id = "object-pool-type")
     @Description("The Java type of the object pool implementation being used.")
     public String getPoolType() {
@@ -77,18 +72,12 @@ public class BaseObjectPool<K, V> extends JmxObject {
                                            pool.getTotalActiveCount(), pool.getTotalIdleCount());
     }
 
-    /**
-     * @return the minimum size of this object pool per key.
-     */
     @ManagedAttribute(id = "object-pool-min-pool-size-per-key")
     @Description("The initial/minimum number of objects per key managed by this object pool.")
     public int getMinPerKey() {
         return pool.getMin();
     }
 
-    /**
-     * @return the maximum size of this object pool per key.
-     */
     @ManagedAttribute(id = "object-pool-max-pool-size-per-key")
     @Description("The maximum number of objects per key allowed by this object pool.")
     public int getMaxPerKey() {
@@ -138,7 +127,7 @@ public class BaseObjectPool<K, V> extends JmxObject {
     }
 
     @ManagedData(name = "Object Pool Stat")
-    public static class CompositeObjectPoolStat {
+    private static class CompositeObjectPoolStat {
         @ManagedAttribute(id = "total-pools")
         @Description("The total number of instances for all keys managed by this object pool.")
         private final int totalPoolSize;
