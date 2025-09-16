@@ -76,7 +76,7 @@
 
     <properties>
         <grizzly-framework-version>4.0.2</grizzly-framework-version>
-        <zookeeper-version>3.9.3</zookeeper-version>
+        <zookeeper-version>3.9.4</zookeeper-version>
         <jdk.compile.version>17</jdk.compile.version>
         <maven.compiler.argument>
             -Xlint:unchecked,deprecation,fallthrough,finally,cast,dep-ann,empty,overrides
