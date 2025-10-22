@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.eclipse.ee4j</groupId>
         <artifactId>project</artifactId>
-        <version>1.0.9</version>
+        <version>2.0.0-M1</version>
     </parent>
 
     <groupId>org.glassfish.grizzly</groupId>
@@ -33,15 +33,16 @@
     <packaging>bundle</packaging>
 
     <name>grizzly-memcached</name>
-    <url>http://projects.eclipse.org/projects/ee4j.grizzly</url>
+    <url>https://projects.eclipse.org/projects/ee4j.grizzly</url>
     <organization>
-        <name>Oracle Corporation</name>
-        <url>http://www.oracle.com</url>
+        <name>Eclipse Foundation</name>
+        <url>https://www.eclipse.org/</url>
     </organization>
     <licenses>
         <license>
-            <name>EPL-2.0</name>
-            <url>http://www.eclipse.org/legal/epl-2.0</url>
+            <name>Eclipse Public License v. 2.0</name>
+            <url>https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.txt</url>
+            <distribution>repo</distribution>
         </license>
     </licenses>
 
@@ -58,8 +59,11 @@
 
     <mailingLists>
         <mailingList>
-            <name>Mailing list: grizzly-dev</name>
-            <archive>grizzly-dev@eclipse.org</archive>
+            <name>GlassFish mailing list</name>
+            <post>glassfish-dev@eclipse.org</post>
+            <subscribe>https://dev.eclipse.org/mailman/listinfo/glassfish-dev</subscribe>
+            <unsubscribe>https://dev.eclipse.org/mailman/listinfo/glassfish-dev</unsubscribe>
+            <archive>https://dev.eclipse.org/mhonarc/lists/glassfish-dev/</archive>
         </mailingList>
     </mailingLists>
 
