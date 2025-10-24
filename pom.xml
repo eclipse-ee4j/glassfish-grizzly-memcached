@@ -33,7 +33,7 @@
     <packaging>bundle</packaging>
 
     <name>grizzly-memcached</name>
-    <url>https://projects.eclipse.org/projects/ee4j.grizzly</url>
+    <url>https://projects.eclipse.org/projects/ee4j.glassfish</url>
     <organization>
         <name>Eclipse Foundation</name>
         <url>https://www.eclipse.org/</url>
