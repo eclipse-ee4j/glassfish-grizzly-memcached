@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Contributors to the Eclipse Foundation.
+ * Copyright (c) 2025, 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -611,12 +611,14 @@ public class MemcachedClientFilter extends BaseFilter {
         if (response == null && isError == null) {
             throw new TimeoutException("timed out while getting the response");
         }
-        if (isError != null && !isError) {
-            result.put((K) requests[lastIndex].getOriginKey(), (V) response);
-        } else {
-            if (logger.isLoggable(Level.FINE)) {
-                logger.log(Level.FINE, "error status op={0}, key={1}",
-                        new Object[]{requests[lastIndex].getOp(), requests[lastIndex].getOriginKey()});
+        if (response != null) {
+            if (isError != null && !isError) {
+                result.put((K) requests[lastIndex].getOriginKey(), (V) response);
+            } else {
+                if (logger.isLoggable(Level.FINE)) {
+                    logger.log(Level.FINE, "error status op={0}, key={1}",
+                               new Object[]{requests[lastIndex].getOp(), requests[lastIndex].getOriginKey()});
+                }
             }
         }
         // collect previous packets
