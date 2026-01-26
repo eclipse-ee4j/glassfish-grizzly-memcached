@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (c) 2025 Contributors to the Eclipse Foundation.
+    Copyright (c) 2025, 2026 Contributors to the Eclipse Foundation.
     Copyright (c) 2010, 2022 Oracle and/or its affiliates. All rights reserved.
 
     This program and the accompanying materials are made available under the
@@ -30,13 +30,12 @@
     <groupId>org.glassfish.grizzly</groupId>
     <artifactId>grizzly-memcached</artifactId>
     <version>1.4.0-SNAPSHOT</version>
-    <packaging>bundle</packaging>
 
     <name>grizzly-memcached</name>
     <url>https://projects.eclipse.org/projects/ee4j.glassfish</url>
     <organization>
-        <name>Eclipse Foundation</name>
-        <url>https://www.eclipse.org/</url>
+        <name>Eclipse Foundation - GlassFish Project</name>
+        <url>https://glassfish.org</url>
     </organization>
     <licenses>
         <license>
@@ -79,9 +78,10 @@
     </issueManagement>
 
     <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <grizzly-framework-version>4.0.2</grizzly-framework-version>
         <zookeeper-version>3.9.4</zookeeper-version>
-        <jdk.compile.version>17</jdk.compile.version>
         <maven.compiler.argument>
             -Xlint:unchecked,deprecation,fallthrough,finally,cast,dep-ann,empty,overrides
         </maven.compiler.argument>
@@ -103,20 +103,6 @@
             <artifactId>zookeeper</artifactId>
             <version>${zookeeper-version}</version>
             <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.sun.jmx</groupId>
-                    <artifactId>jmxri</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.sun.jdmk</groupId>
-                    <artifactId>jmxtools</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>javax.jms</groupId>
-                    <artifactId>jms</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>commons-pool</groupId>
@@ -134,7 +120,6 @@
 
     <build>
         <defaultGoal>install</defaultGoal>
-        <directory>target</directory>
         <finalName>${project.artifactId}-${project.version}</finalName>
         <resources>
             <resource>
@@ -148,7 +133,6 @@
         </testResources>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
                 <version>3.6.2</version>
                 <executions>
@@ -160,7 +144,7 @@
                         <configuration>
                             <rules>
                                 <requireJavaVersion>
-                                    <version>[${jdk.compile.version},)</version>
+                                    <version>[${java.version},)</version>
                                 </requireJavaVersion>
                                 <requireMavenVersion>
                                     <version>3.8.9</version>
@@ -170,71 +154,71 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.1</version>
                 <configuration>
-                    <release>${jdk.compile.version}</release>
+                    <release>${java.version}</release>
                     <compilerArgument>${maven.compiler.argument}</compilerArgument>
                 </configuration>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
                 <version>6.0.0</version>
-                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <id>bundle-manifest</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>manifest</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
+                    <niceManifest>true</niceManifest>
+                    <url>${project.url}</url>
                     <instructions>
-                        <instructions>
-                            <_noimportjava>true</_noimportjava>
-                            <_runee>JavaSE-${jdk.compile.version}</_runee>
-                        </instructions>
+                        <_noimportjava>true</_noimportjava>
+                        <_runee>JavaSE-${java.version}</_runee>
                         <Import-Package>
-                            org.glassfish.grizzly*;version=${project.version},
+                            !android.os,
                             *,
                         </Import-Package>
-                        <Export-Package>
-                            org.glassfish.grizzly.memcached.*;version=${project.version},
-                        </Export-Package>
+                        <!-- Grizzly exports even impl packages -->
+                        <Export-Package>*</Export-Package>
                     </instructions>
                 </configuration>
             </plugin>
-
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
                     <archive>
-                        <manifestEntries>
-                            <mode>development</mode>
-                            <url>${project.url}</url>
-                            <implementation-version>${project.version}</implementation-version>
-                            <package>org.glassfish.grizzly</package>
-                        </manifestEntries>
+                        <manifest>
+                            <addClasspath>false</addClasspath>
+                        </manifest>
+                        <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
                     </archive>
                 </configuration>
             </plugin>
-
             <plugin>
                 <artifactId>maven-install-plugin</artifactId>
                 <version>3.1.4</version>
             </plugin>
-
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>
                 <version>3.1.4</version>
             </plugin>
-
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
                 <version>3.4.0</version>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <propertiesEncoding>ISO-8859-1</propertiesEncoding>
+                </configuration>
             </plugin>
-
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.12.0</version>
                 <configuration>
@@ -244,9 +228,7 @@
                     <doctitle>${project.name} ${project.version}</doctitle>
                 </configuration>
             </plugin>
-
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>3.4.0</version>
                 <executions>
@@ -258,7 +240,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.glassfish.copyright</groupId>
                 <artifactId>glassfish-copyright-maven-plugin</artifactId>
@@ -270,11 +251,14 @@
                     <warn>false</warn>
                 </configuration>
             </plugin>
-
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.4</version>
+                <configuration>
+                    <reuseForks>false</reuseForks>
+                    <useModulePath>false</useModulePath>
+                    <argLine>-XX:+HeapDumpOnOutOfMemoryError</argLine>
+                </configuration>
             </plugin>
         </plugins>
     </build>
