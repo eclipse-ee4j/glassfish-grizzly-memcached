@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Contributors to the Eclipse Foundation.
+ * Copyright (c) 2025, 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2025 Oracle and/or its affiliates and others. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -2595,8 +2595,10 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
             jmxManager = grizzlyJmxManager;
             managementObject = localManagementObject;
         } catch (Exception e) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.log(Level.WARNING, "failed to enable JMX. cache=" + this, e);
+            if (logger.isLoggable(Level.INFO)) {
+                logger.log(Level.INFO, "failed to enable JMX. cache=" + this);
+            } else if (logger.isLoggable(Level.FINE)) {
+                logger.log(Level.FINE, "failed to enable JMX. cache=" + this, e);
             }
         }
     }
@@ -2609,8 +2611,10 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
             managementObject = null;
             jmxManager = null;
         } catch (Exception e) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.log(Level.WARNING, "failed to disable JMX. cache=" + this, e);
+            if (logger.isLoggable(Level.INFO)) {
+                logger.log(Level.INFO, "failed to disable JMX. cache=" + this);
+            } else if (logger.isLoggable(Level.FINE)) {
+                logger.log(Level.FINE, "failed to disable JMX. cache=" + this, e);
             }
         }
     }
