@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -405,13 +406,11 @@ public class BufferWrapper<T> implements Cacheable {
                     bis = new BufferInputStream(buffer, position, limit);
                     ois = new ObjectInputStream(bis);
                     obj = ois.readObject();
-                } catch (IOException ie) {
-                    if (logger.isLoggable(Level.SEVERE)) {
-                        logger.log(Level.SEVERE, "failed to read the object", ie);
-                    }
-                } catch (ClassNotFoundException cnfe) {
-                    if (logger.isLoggable(Level.SEVERE)) {
-                        logger.log(Level.SEVERE, "failed to read the object", cnfe);
+                } catch (IOException | ClassNotFoundException e) {
+                    if (logger.isLoggable(Level.WARNING)) {
+                        logger.log(Level.WARNING, "failed to read the object. {0}", e.getMessage());
+                    } else if (logger.isLoggable(Level.FINE)) {
+                        logger.log(Level.FINE, "failed to read the object", e);
                     }
                 } finally {
                     if (ois != null) {
@@ -440,13 +439,11 @@ public class BufferWrapper<T> implements Cacheable {
                     bis2 = new BufferInputStream(decompressedBuffer3);
                     ois2 = new ObjectInputStream(bis2);
                     obj2 = ois2.readObject();
-                } catch (IOException ie) {
-                    if (logger.isLoggable(Level.SEVERE)) {
-                        logger.log(Level.SEVERE, "failed to read the object", ie);
-                    }
-                } catch (ClassNotFoundException cnfe) {
-                    if (logger.isLoggable(Level.SEVERE)) {
-                        logger.log(Level.SEVERE, "failed to read the object", cnfe);
+                } catch (IOException | ClassNotFoundException e) {
+                    if (logger.isLoggable(Level.WARNING)) {
+                        logger.log(Level.WARNING, "failed to read the compressed object. {0}", e.getMessage());
+                    } else if (logger.isLoggable(Level.FINE)) {
+                        logger.log(Level.FINE, "failed to read the compressed object", e);
                     }
                 } finally {
                     if (ois2 != null) {
