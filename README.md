@@ -13,7 +13,7 @@ The Grizzly Memcached provides the interface for applications to interact with t
 
 Key features include:
 
-- Connection Management: 
+- Connection Management:
   - Establishing and maintaining connections to one or more Memcached servers.
 - Key-Value Operations:
   - Performing various operations such as set, setMulti, get, getMulti, delete, deleteMulti, cas, increment, decrement and etc. with keys and raw data values.
@@ -36,9 +36,9 @@ Key features include:
     <dependency>
         <groupId>org.glassfish.grizzly</groupId>
         <artifactId>grizzly-memcached</artifactId>
-        <version>1.3.19</version>
+        <version>1.4.0</version>
     </dependency>
-</dependencies>    
+</dependencies>
 ```
 
 ### Prerequisites
@@ -77,7 +77,7 @@ public class Application {
 
         // creates a CacheBuilder
         final GrizzlyMemcachedCache.Builder<String, String> builder = manager.createCacheBuilder("USER");
-      
+
         // sets initial servers
         final Set<SocketAddress> initServerSet = Set.of(new InetSocketAddress("memcached1.example.com", 11211),
                                                         new InetSocketAddress("memcached2.example.com", 11211));

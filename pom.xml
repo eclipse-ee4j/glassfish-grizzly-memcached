@@ -31,8 +31,10 @@
     <artifactId>grizzly-memcached</artifactId>
     <version>1.4.0-SNAPSHOT</version>
 
-    <name>grizzly-memcached</name>
-    <url>https://projects.eclipse.org/projects/ee4j.glassfish</url>
+    <name>Grizzly - Memcached</name>
+    <description>Java client library that allows programs to connect to, store data in, and retrieve data from a Memcached server</description>
+
+    <url>https://github.com/eclipse-ee4j/glassfish-grizzly-memcached#grizzly-memcached</url>
     <organization>
         <name>Eclipse Foundation - GlassFish Project</name>
         <url>https://glassfish.org</url>
@@ -54,7 +56,21 @@
             <organization>Kakao Corp.</organization>
             <organizationUrl>https://www.kakaocorp.com/page/?lang=ENG</organizationUrl>
         </developer>
+        <developer>
+            <id>eclipse-glassfish-dev</id>
+            <name>GlassFish Development Team</name>
+            <email>glassfish-dev@eclipse.org</email>
+            <organization>Eclipse Foundation</organization>
+            <organizationUrl>https://www.eclipse.org</organizationUrl>
+            <url>https://projects.eclipse.org/projects/ee4j.glassfish/who</url>
+        </developer>
     </developers>
+    <contributors>
+        <contributor>
+            <name>GitHub Contributors</name>
+            <url>https://github.com/eclipse-ee4j/glassfish-grizzly-memcached/graphs/contributors</url>
+        </contributor>
+    </contributors>
 
     <mailingLists>
         <mailingList>
@@ -80,11 +96,8 @@
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <grizzly-framework-version>4.0.2</grizzly-framework-version>
+        <grizzly-framework-version>5.0.1</grizzly-framework-version>
         <zookeeper-version>3.9.5</zookeeper-version>
-        <maven.compiler.argument>
-            -Xlint:unchecked,deprecation,fallthrough,finally,cast,dep-ann,empty,overrides
-        </maven.compiler.argument>
     </properties>
 
     <dependencies>
@@ -262,4 +275,14 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>oss-release</id>
+            <properties>
+                <release.autoPublish>false</release.autoPublish>
+                <release.waitUntil>published</release.waitUntil>
+            </properties>
+        </profile>
+    </profiles>
 </project>
