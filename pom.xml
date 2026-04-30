@@ -29,7 +29,7 @@
 
     <groupId>org.glassfish.grizzly</groupId>
     <artifactId>grizzly-memcached</artifactId>
-    <version>1.4.0</version>
+    <version>1.4.1-SNAPSHOT</version>
 
     <name>Grizzly - Memcached</name>
     <description>Java client library that allows programs to connect to, store data in, and retrieve data from a Memcached server</description>
@@ -86,7 +86,7 @@
         <connection>scm:git:https://github.com/eclipse-ee4j/glassfish-grizzly-memcached.git</connection>
         <developerConnection>scm:git:git@github.com:eclipse-ee4j/glassfish-grizzly-memcached.git</developerConnection>
         <url>https://github.com/eclipse-ee4j/glassfish-grizzly-memcached</url>
-        <tag>1.4.0</tag>
+        <tag>HEAD</tag>
     </scm>
     <issueManagement>
         <system>GitHub</system>
