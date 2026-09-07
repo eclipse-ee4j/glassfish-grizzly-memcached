@@ -162,6 +162,9 @@ public class GrizzlyMemcachedCache<K, V> implements MemcachedCache<K, V>, ZooKee
                 }
             };
 
+    public static final int MAX_KEY_LENGTH = 250; // 250bytes
+    public static final int MAX_VALUE_LENGTH = 1024 * 1024; // 1M
+
     private GrizzlyMemcachedCache(Builder<K, V> builder) {
         this.cacheName = builder.cacheName;
         this.transport = builder.transport;
