@@ -30,6 +30,7 @@ import org.glassfish.grizzly.memory.CompositeBuffer;
 import org.glassfish.grizzly.memory.MemoryManager;
 
 import java.io.IOException;
+import java.io.ObjectInputFilter;
 import java.net.SocketAddress;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -101,14 +102,12 @@ public class MemcachedClientFilter extends BaseFilter {
 
     private final boolean localParsingOptimizing;
     private final boolean onceAllocationOptimizing;
+    private final ObjectInputFilter objectInputFilter;
 
-    public MemcachedClientFilter() {
-        this(false, true);
-    }
-
-    public MemcachedClientFilter(final boolean localParsingOptimizing, final boolean onceAllocationOptimizing) {
+    public MemcachedClientFilter(final boolean localParsingOptimizing, final boolean onceAllocationOptimizing, final ObjectInputFilter objectInputFilter) {
         this.localParsingOptimizing = localParsingOptimizing;
         this.onceAllocationOptimizing = onceAllocationOptimizing;
+        this.objectInputFilter = objectInputFilter;
     }
 
     @Override
@@ -247,7 +246,7 @@ public class MemcachedClientFilter extends BaseFilter {
                     if (keyLength > 0) {
                         final int currentPosition = input.position();
                         final int limit = currentPosition + keyLength;
-                        response.setDecodedKey(input, currentPosition, limit, memoryManager);
+                        response.setDecodedKey(input, currentPosition, limit, objectInputFilter, memoryManager);
                         input.position(limit);
                     } else {
                         response.setDecodedKey(null);
@@ -279,7 +278,7 @@ public class MemcachedClientFilter extends BaseFilter {
                             if (sentRequest == null) {
                                 throw new IOException("invalid response");
                             }
-                            response.setDecodedValue(input, currentPosition, limit, memoryManager);
+                            response.setDecodedValue(input, currentPosition, limit, objectInputFilter, memoryManager);
                             input.position(limit);
                         } else {
                             response.setDecodedValue(null);

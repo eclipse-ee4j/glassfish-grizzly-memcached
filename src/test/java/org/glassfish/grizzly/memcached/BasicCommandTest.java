@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -797,7 +798,8 @@ public class BasicCommandTest {
     // memcached server should be booted in local
     //@Test
     public void testObjectCache() {
-        final GrizzlyMemcachedCacheManager manager = new GrizzlyMemcachedCacheManager.Builder().build();
+        final GrizzlyMemcachedCacheManager manager = new GrizzlyMemcachedCacheManager.Builder().objectFilterPattern(
+                "java.base/*;org.glassfish.grizzly.memcached.BasicCommandTest$User;!*").build();
         final GrizzlyMemcachedCache.Builder<String, User> builder = manager.createCacheBuilder("userCache");
         final MemcachedCache<String, User> userCache = builder.build();
         userCache.addServer(DEFAULT_MEMCACHED_ADDRESS);
