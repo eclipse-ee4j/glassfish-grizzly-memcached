@@ -241,6 +241,10 @@ public class MemcachedClientFilter extends BaseFilter {
                     break;
                 case READ_KEY:
                     keyLength = response.getKeyLength();
+                    if (keyLength > GrizzlyMemcachedCache.MAX_KEY_LENGTH) {
+                        throw new IOException("key length is in excess of " + GrizzlyMemcachedCache.MAX_KEY_LENGTH +
+                                              "bytes. keyLength=" + keyLength + "bytes");
+                    }
                     if (input.remaining() < keyLength) {
                         return ctx.getStopAction(input);
                     }
@@ -266,6 +270,9 @@ public class MemcachedClientFilter extends BaseFilter {
                                 + "total body length=" + totalBodyLength
                                 + ", key length = " + keyLength
                                 + ", extra length = " + extraLength);
+                    } else if (valueLength > GrizzlyMemcachedCache.MAX_VALUE_LENGTH) {
+                        throw new IOException("value length is in excess of " + GrizzlyMemcachedCache.MAX_VALUE_LENGTH +
+                                              "bytes. valueLength=" + valueLength + "bytes");
                     }
                     if (input.remaining() < valueLength) {
                         return ctx.getStopAction(input);
