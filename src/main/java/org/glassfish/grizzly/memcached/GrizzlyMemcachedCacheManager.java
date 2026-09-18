@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2019 Oracle and/or its affiliates and others.
  * All rights reserved.
  *
@@ -31,6 +32,8 @@ import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
 import org.glassfish.grizzly.strategies.SameThreadIOStrategy;
 
 import java.io.IOException;
+import java.io.ObjectInputFilter;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -63,7 +66,9 @@ public class GrizzlyMemcachedCacheManager implements CacheManager {
         if (transportLocal == null) {
             isExternalTransport = false;
             final FilterChainBuilder clientFilterChainBuilder = FilterChainBuilder.stateless();
-            clientFilterChainBuilder.add(new TransportFilter()).add(new MemcachedClientFilter(true, true));
+            clientFilterChainBuilder.add(new TransportFilter()).add(new MemcachedClientFilter(true, true,
+                                                                                              ObjectInputFilter.Config.createFilter(
+                                                                                                      builder.objectFilterPattern)));
             final TCPNIOTransportBuilder clientTCPNIOTransportBuilder = TCPNIOTransportBuilder.newInstance();
             transportLocal = clientTCPNIOTransportBuilder.build();
             transportLocal.setProcessor(clientFilterChainBuilder.build());
@@ -213,6 +218,8 @@ public class GrizzlyMemcachedCacheManager implements CacheManager {
 
         // zookeeper config
         private ZooKeeperConfig zooKeeperConfig;
+        // default is reject everything
+        private String objectFilterPattern = "!*";
 
         /**
          * Set the specific {@link TCPNIOTransport GrizzlyTransport}
@@ -294,6 +301,18 @@ public class GrizzlyMemcachedCacheManager implements CacheManager {
          */
         public Builder zooKeeperConfig(final ZooKeeperConfig zooKeeperConfig) {
             this.zooKeeperConfig = zooKeeperConfig;
+            return this;
+        }
+
+        /**
+         * Specify a string of patterns for an ObjectInputFilter
+         *
+         * @param objectFilterPattern the pattern string to parse; default is reject everything
+         * @return this builder
+         * @see ObjectInputFilter.Config#createFilter(String)
+         */
+        public Builder objectFilterPattern(final String objectFilterPattern) {
+            this.objectFilterPattern = Objects.requireNonNullElse(objectFilterPattern, "");
             return this;
         }
 

@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -22,6 +23,7 @@ import org.glassfish.grizzly.Grizzly;
 import org.glassfish.grizzly.ThreadCache;
 import org.glassfish.grizzly.memory.MemoryManager;
 
+import java.io.ObjectInputFilter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -153,7 +155,7 @@ public class MemcachedResponse implements Cacheable {
         this.flags = flags;
     }
 
-    public void setDecodedKey(final Buffer buffer, final int position, final int limit, final MemoryManager memoryManager) {
+    public void setDecodedKey(final Buffer buffer, final int position, final int limit, final ObjectInputFilter filter, final MemoryManager memoryManager) {
         if (buffer == null || position > limit) {
             return;
         }
@@ -161,7 +163,7 @@ public class MemcachedResponse implements Cacheable {
         switch (op) {
             case Stat:
                 if (!isError()) {
-                    result = BufferWrapper.unwrap(buffer, position, limit, BufferWrapper.BufferType.STRING, memoryManager);
+                    result = BufferWrapper.unwrap(buffer, position, limit, BufferWrapper.BufferType.STRING, filter, memoryManager);
                 } else {
                     result = null;
                 }
@@ -177,7 +179,7 @@ public class MemcachedResponse implements Cacheable {
         this.decodedKey = decodedKey;
     }
 
-    public void setDecodedValue(final Buffer buffer, final int position, final int limit, final MemoryManager memoryManager) {
+    public void setDecodedValue(final Buffer buffer, final int position, final int limit, final ObjectInputFilter filter, final MemoryManager memoryManager) {
         if (buffer == null || position > limit) {
             return;
         }
@@ -193,7 +195,7 @@ public class MemcachedResponse implements Cacheable {
             case Gets:
             case GetsQ:
                 if (!isError()) {
-                    result = BufferWrapper.unwrap(buffer, position, limit, BufferWrapper.BufferType.getBufferType(this.flags), memoryManager);
+                    result = BufferWrapper.unwrap(buffer, position, limit, BufferWrapper.BufferType.getBufferType(this.flags), filter, memoryManager);
                 } else {
                     result = null;
                 }
@@ -201,7 +203,7 @@ public class MemcachedResponse implements Cacheable {
             case Increment:
             case Decrement:
                 if (!isError()) {
-                    result = BufferWrapper.unwrap(buffer, position, limit, BufferWrapper.BufferType.LONG, memoryManager);
+                    result = BufferWrapper.unwrap(buffer, position, limit, BufferWrapper.BufferType.LONG, filter, memoryManager);
                 } else {
                     result = INVALID_LONG;
                 }
@@ -210,7 +212,7 @@ public class MemcachedResponse implements Cacheable {
             case Version:
             case Stat:
                 if (!isError()) {
-                    result = BufferWrapper.unwrap(buffer, position, limit, BufferWrapper.BufferType.STRING, memoryManager);
+                    result = BufferWrapper.unwrap(buffer, position, limit, BufferWrapper.BufferType.STRING, filter, memoryManager);
                 } else {
                     result = null;
                 }
