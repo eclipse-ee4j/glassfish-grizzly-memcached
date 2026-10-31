@@ -29,6 +29,7 @@ import org.glassfish.grizzly.utils.BufferOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputFilter;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.UnsupportedEncodingException;
@@ -306,28 +307,13 @@ public class BufferWrapper<T> implements Cacheable {
      * Return the original instance from {@code buffer}
      *
      * @param buffer        the {@link Buffer} for being restored
-     * @param type          the type of original object
-     * @param memoryManager the memory manager which will be used for decompressing packets
-     * @return the restored object
-     */
-    public static Object unwrap(final Buffer buffer, final BufferWrapper.BufferType type, final MemoryManager memoryManager) {
-        if (buffer == null) {
-            return null;
-        }
-        return unwrap(buffer, buffer.position(), buffer.limit(), type, memoryManager);
-    }
-
-    /**
-     * Return the original instance from {@code buffer}
-     *
-     * @param buffer        the {@link Buffer} for being restored
      * @param position      the position of buffer to convert {@code buffer} into origin
      * @param limit         the limit of buffer to convert {@code buffer} into origin
      * @param type          the type of original object
      * @param memoryManager the memory manager which will be used for decompressing packets
      * @return the restored object
      */
-    public static Object unwrap(final Buffer buffer, final int position, final int limit, final BufferWrapper.BufferType type, final MemoryManager memoryManager) {
+    public static Object unwrap(final Buffer buffer, final int position, final int limit, final BufferWrapper.BufferType type, final ObjectInputFilter filter, final MemoryManager memoryManager) {
         if (buffer == null || position > limit || type == null) {
             return null;
         }
@@ -405,6 +391,7 @@ public class BufferWrapper<T> implements Cacheable {
                 try {
                     bis = new BufferInputStream(buffer, position, limit);
                     ois = new ObjectInputStream(bis);
+                    ois.setObjectInputFilter(filter);
                     obj = ois.readObject();
                 } catch (IOException | ClassNotFoundException e) {
                     if (logger.isLoggable(Level.WARNING)) {
@@ -438,6 +425,7 @@ public class BufferWrapper<T> implements Cacheable {
                 try {
                     bis2 = new BufferInputStream(decompressedBuffer3);
                     ois2 = new ObjectInputStream(bis2);
+                    ois2.setObjectInputFilter(filter);
                     obj2 = ois2.readObject();
                 } catch (IOException | ClassNotFoundException e) {
                     if (logger.isLoggable(Level.WARNING)) {
