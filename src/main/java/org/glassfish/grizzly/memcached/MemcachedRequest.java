@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * Copyright (c) 2012, 2017 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
@@ -32,9 +33,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Bongjae Chang
  */
 public class MemcachedRequest {
-
-    private static final int MAX_KEY_LENGTH = 250; // 250bytes
-    private static final int MAX_VALUE_LENGTH = 1024 * 1024; // 1M
 
     private final boolean hasExtras;
     private final boolean hasKey;
@@ -347,8 +345,10 @@ public class MemcachedRequest {
         public Builder key(final Buffer key) throws IllegalArgumentException {
             if (key != null) {
                 final int keyLen = key.remaining();
-                if (keyLen > MAX_KEY_LENGTH) {
-                    throw new IllegalArgumentException("key length is in excess of " + MAX_KEY_LENGTH + "bytes. keyLen=" + keyLen + "bytes");
+                if (keyLen > GrizzlyMemcachedCache.MAX_KEY_LENGTH) {
+                    throw new IllegalArgumentException(
+                            "key length is in excess of " + GrizzlyMemcachedCache.MAX_KEY_LENGTH + "bytes. keyLen=" +
+                            keyLen + "bytes");
                 }
                 this.key = key;
             }
@@ -358,8 +358,10 @@ public class MemcachedRequest {
         public Builder value(final Buffer value) throws IllegalArgumentException {
             if (value != null) {
                 final int valueLen = value.remaining();
-                if (valueLen > MAX_VALUE_LENGTH) {
-                    throw new IllegalArgumentException("value length is in excess of " + MAX_VALUE_LENGTH + "bytes. valueLen=" + valueLen + "bytes");
+                if (valueLen > GrizzlyMemcachedCache.MAX_VALUE_LENGTH) {
+                    throw new IllegalArgumentException(
+                            "value length is in excess of " + GrizzlyMemcachedCache.MAX_VALUE_LENGTH +
+                            "bytes. valueLen=" + valueLen + "bytes");
                 }
                 this.value = value;
             }
